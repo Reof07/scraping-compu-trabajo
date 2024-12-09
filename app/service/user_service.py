@@ -21,7 +21,7 @@ def save_new_user(db: Session, user: UserRegister)-> User:
         user = User(
             username = user.username,
             email = user.email,
-            password=pwd_context.hash(user.password)
+            hashed_password=pwd_context.hash(user.password)
         )
         
         db.add(user)
@@ -56,10 +56,33 @@ async def register_user(user: UserRegister, db: Session)-> UserBase:
     Returns:
         UserRegister
     """
-    # validar que el usuario no exista
+
     if check_if_user_exists(db, user.username):
         raise ValueError("El usuario ya existe")
     
-    # insertar en la base de datos
     new_user = save_new_user(db, user)    
     return UserBase(username=new_user.username, email=new_user.email)
+
+def get_user_by_email(db: Session, email: str):
+    """ Get user by email
+
+    Args:
+        db (Session): The database session.
+        email (str): The email of the user to be retrieved.
+
+    Returns:
+        User
+    """
+    return db.query(User).filter(User.email == email).first()
+
+def get_refresh_token(db: Session, refresh_token: str):
+    """ Get refresh token
+
+    Args:
+        db (Session): The database session.
+        refresh_token (str): The refresh token of the user to be retrieved.
+
+    Returns:
+        User        
+    """
+    return db.query(User).filter(User.refresh_token == refresh_token).first()

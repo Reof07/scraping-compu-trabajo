@@ -17,13 +17,14 @@ app = FastAPI(
     description="""
 ### Base FastAPI Project
 
-This service provides the following functionalities:
-1. **Create new users** – Easily create new users with unique email addresses.
-2. **Athentication** – Securely authenticate users with their email address and password.
+This service offers the following core functionalities:
+1. **User Registration** – Seamlessly register new users with unique email addresses.
+2. **User Authentication** – Securely authenticate users using their email and password, providing access and refresh tokens.
 
-By following the steps below, you can create a new user and authenticate them.🚀
+#### Get Started 🚀
+Follow these steps to register a new user and authenticate them successfully. Explore the API documentation below to see all available endpoints.
 """,
-    version="v0.1.0",
+    version="0.1.0",
 )
 
 # Configuración de CORS: restringir a los orígenes permitidos en producción
