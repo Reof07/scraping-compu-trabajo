@@ -18,7 +18,8 @@ from ....service.user_service import (
 from ....service.authentication import (
     authenticate_user,
     create_access_token,
-    create_refresh_token
+    create_refresh_token,
+    save_credentials
     )
 
 auth_router = APIRouter(
@@ -51,6 +52,7 @@ async def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    await save_credentials(db, request.email, request.password)
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(db=db, email=user.email)
     return GenericResponse(

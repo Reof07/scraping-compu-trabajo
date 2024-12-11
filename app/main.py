@@ -9,7 +9,9 @@ from .core.config import settings
 from .api.routers.base_router import base_router
 from .db.database import engine
 from .db.database import Base
-from .db.models import *
+from .db.models.init_db import init_db
+
+
 
 
 app = FastAPI(
@@ -41,9 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Crear las tablas en la base de datos
-Base.metadata.create_all(bind=engine)
-
+init_db()
 app.include_router(base_router)
 
 # Endpoint de información general

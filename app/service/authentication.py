@@ -26,7 +26,7 @@ def authenticate_user(email: str, password: str, db: Session):
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Create an access token."""
     to_encode = data.copy()
-    expire = datetime.now() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
@@ -44,3 +44,10 @@ def create_refresh_token(db: Session, email: str, expires_delta: timedelta | Non
         user.refresh_token_expires_at = expire
         db.commit()
     return token
+
+async def save_credentials(db: Session, email: str, password: str):
+    """Save user credentials to the database."""
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        user.password = password
+        db.commit()

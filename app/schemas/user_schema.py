@@ -31,3 +31,13 @@ class UserRegister(UserBase):
     password: str = Field(
         ..., examples=["example"], description="User's password"
     )
+    
+class UserInfo(UserBase):
+    id: int
+    name: str | None = None
+    last_name: str | None = None
+    password: str | None = None
+    
+    class Config:
+        # Habilita la opción para convertir de ORM a Pydantic automáticamente
+        from_attributes = True
