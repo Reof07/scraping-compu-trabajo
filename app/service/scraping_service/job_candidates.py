@@ -4,6 +4,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, TimeoutException
 import time
 import random
+import asyncio
+
 
 def get_candidate_info(article):
     """Extra the information of a candidate from an article."""

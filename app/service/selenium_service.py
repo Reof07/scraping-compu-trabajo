@@ -1,5 +1,7 @@
+import asyncio
 import time
 import random
+import traceback
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -11,6 +13,7 @@ from ..core.selenium import driver
 from .scraping_service.job_candidates import extract_candidate_info
 from .scraping_service.details_candidate import extract_candidate_details
 from .offer_service import create_offer
+from .scraping_service.offer import extract_all_offers
 from .candidate_service import create_candidate
 
 
@@ -102,101 +105,6 @@ async def doing_login(driver, username, password):
                 logger.info("Reintentando login...")
                 await doing_login(driver, username, password)
 
-                
-        
-# Función para acceder a la página de ofertas y extraer información
-async def extract_all_offers(db, driver, url, user_id):
-    """Extrae todas las ofertas laborales desde la página."""
-    driver.get(url)
-    print(f"Página inicial: {driver.current_url}")
-
-    offers_data = []
-    while True:
-        # Esperar que los artículos se carguen
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article.aClick"))
-        )
-
-        # Seleccionar todos los artículos de la página actual
-        articles = driver.find_elements(By.CSS_SELECTOR, "article.aClick")
-
-        # Extraer los datos de los artículos
-        for article in articles:
-            offer = {}
-
-            try:
-                title_element = article.find_element(By.CLASS_NAME, "test_offername")
-                offer["title"] = title_element.text.strip()
-            except Exception:
-                try:
-                    title_element = article.find_element(By.CSS_SELECTOR, "span.fs18.lh1")
-                    offer["title"] = title_element.text.strip()
-                except Exception:
-                    offer["title"] = "Título no encontrado"
-
-            try:
-                offer["location"] = article.find_element(By.CSS_SELECTOR, "p.mt5").text.strip()
-            except Exception:
-                offer["location"] = "Ubicación no encontrada"
-
-            try:
-                offer["date_updated"] = article.find_element(By.CSS_SELECTOR, "p.fc_aux.fs12").text.strip()
-            except Exception:
-                offer["date_updated"] = "Fecha no encontrada"
-
-            try:
-                views_text = article.find_element(By.CSS_SELECTOR, "div.fc_aux.fwB.mt5").text
-                offer["views"] = views_text.split()[0] if views_text else "0"
-            except Exception:
-                offer["views"] = "0"
-
-            try:
-                offer["expiration_date"] = article.find_element(By.CSS_SELECTOR, "div.tc_fx").text.strip()
-            except Exception:
-                offer["expiration_date"] = "Fecha no encontrada"
-
-            try:
-                applicants_element = article.find_element(By.CSS_SELECTOR, "a.dB.fwB.fs20.hide_m")
-                offer["applicants"] = applicants_element.text.strip()
-                offer["applicants_link"] = applicants_element.get_attribute("href")
-            except Exception:
-                offer["applicants"] = "0"
-                offer["applicants_link"] = "Enlace no encontrado"
-
-            try:
-                offer_link = article.find_element(By.CSS_SELECTOR, "a.fn.fs18.test_offername")
-                offer["offer_id"] = offer_link.get_attribute("href").split('oi=')[1]
-            except Exception:
-                offer["offer_id"] = "ID no encontrado"
-
-            # Extraer el ID de la oferta desde el input checkbox
-            try:
-                checkbox_input = article.find_element(By.CSS_SELECTOR, "input[type='checkbox']")
-                offer["offer_id"] = checkbox_input.get_attribute("id").split("chk_")[1]
-            except Exception:
-                offer["offer_id"] = "ID no encontrado"
-
-            #save in database
-            await create_offer(db, user_id, offer)
-            
-            time.sleep(random.uniform(1, 2)) 
-            
-            offers_data.append(offer)
-
-        # Intentar avanzar a la siguiente página
-        try:
-            next_button = driver.find_element(By.CSS_SELECTOR, "a.b_next")
-            next_button.click()
-            WebDriverWait(driver, 10).until(EC.staleness_of(articles[0]))
-            
-            time.sleep(random.uniform(3, 5))
-        except Exception:
-            print("No se encontró el botón 'Siguiente', terminando la extracción.")
-            break
-
-    return offers_data
-
-
 async def print_offers(offers_data):
     """Imprime las ofertas extraídas."""
     print("\nOfertas extraídas:")
@@ -226,12 +134,12 @@ async def flujo_principal(db, email: str, password: str, user_id):
         # Si el login es exitoso, proceder con la extracción de ofertas
         url_offers = "https://empresa.co.computrabajo.com/Company/Offers"
         offers_data = await extract_all_offers(db, driver, url_offers, user_id)
-        candidate_info = await get_candidate_info(offers_data, db)
-        # candidates_details = await get_candidates_details(driver, candidate_info)
         await print_offers(offers_data)
 
     except Exception as e:
-        logger.error(f"Error en el flujo principal: {e}")
+        error_message = f"Error en el flujo principal: {str(e)}"
+        logger.error(error_message)
+        logger.error(f"Traceback: {traceback.format_exc()}")  # Esto loguea el traceback completo
     finally:
         logger.info("Cerrando navegador...")
         driver.quit()
