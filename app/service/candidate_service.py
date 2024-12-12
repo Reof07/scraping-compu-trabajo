@@ -1,7 +1,11 @@
+import datetime
+
 from sqlalchemy.orm import Session
 
 from ..db.models.candidate import Candidate
 from ..db.models.candidate_detail import CandidateDetail
+from ..db.database import SessionLocal
+from ..core.logger_config import logger
 
 def create_candidate(db: Session, offer_id: str, candidate_data: dict):
     """
@@ -14,56 +18,72 @@ def create_candidate(db: Session, offer_id: str, candidate_data: dict):
         
     Returns:
     """
-
-    print(f"candidate_data: {candidate_data}")
-    print(f"offer_id: {offer_id}")
-    candidate = Candidate(
-        name=candidate_data["name"],
-        application_date=candidate_data["applied_date"],
-        age=candidate_data["age"],
-        education_level=candidate_data["studies"],
-        suitability=candidate_data["adequacy"],
-        details_link=candidate_data["profile_link"],
-        # offer_id="",
-        uuid_offer=offer_id,
-    )
+    #TODO: intentar crear una conexion de base de datos aqui y evitar reciir una
+    # print(f"candidate_data: {candidate_data}")
+    # print(f"offer_id: {offer_id}")
     
-    db.add(candidate)
-    db.commit()
-    db.refresh(candidate)
-    return candidate
-
-
-
-async def create_candidate_detail(db: Session, candidate_id: int, detail_data: dict):
-    """
-    Function to create the details of a candidate.
-    
-    Args:
-        db: Database session.
-        candidate_id: ID of the candidate to which the details will be associated.
-        detail_data: Data for the details in the form of a dictionary.
+    #crear session
+    db = SessionLocal()
+    try:
+        candidate = Candidate(
+            name=candidate_data["name"],
+            application_date=candidate_data["applied_date"],
+            age=candidate_data["age"],
+            education_level=candidate_data["studies"],
+            suitability=candidate_data["adequacy"],
+            details_link=candidate_data["profile_link"],
+            # offer_id="",
+            uuid_offer=offer_id,
+            uuid_candidate=candidate_data["candidate_id"],
+        )
         
-    Returns:
-        CandidateDetail: Instance of the created candidate details.
+        db.add(candidate)
+        db.commit()
+        db.refresh(candidate)
+        return candidate
+    except Exception as e:
+        # Log error if something goes wrong during candidate creation or update
+        logger.error(f"Error al crear o actualizar el candidato: {e}")
+        return None
+    finally:
+        db.close()
+
+
+
+def save_candidate_details(driver, candidate_details, id_candidate, db: Session):
+    """
+    Extrae los detalles de un candidato desde un enlace y los guarda en la base de datos.
+
+    :param driver: Instancia activa de Selenium WebDriver.
+    :param candidate_details_link: URL con los detalles del candidato.
+    :param id_candidate: ID del candidato para asociarlo a los detalles.
+    :param db: Sesión activa de la base de datos.
+    :return: Objeto de los detalles del candidato guardados en la base de datos.
     """
 
-    candidate_detail = CandidateDetail(
-        email=detail_data.get("email", "Correo no encontrado"),
-        id_number=detail_data.get("id_number", "Identificación no encontrada"),
-        mobile_phone=detail_data.get("mobile_phone", "Teléfono móvil no encontrado"),
-        landline_phone=detail_data.get("landline_phone", "Teléfono fijo no encontrado"),
-        location=detail_data.get("location", "Ubicación no encontrada"),
-        marital_status=detail_data.get("marital_status", "Estado civil no encontrado"),
-        availability_to_travel=detail_data.get("availability_to_travel", "Disponibilidad para viajar no encontrada"),
-        availability_to_move=detail_data.get("availability_to_move", "Disponibilidad para cambio de residencia no encontrada"),
-        net_monthly_salary=detail_data.get("net_monthly_salary", "Salario neto mensual no encontrado"),
-        candidate_id=candidate_id,
-        # languages=detail_data["languages"],
-        # resume=detail_data["resume"]
+    # Crear un objeto CandidateDetails
+    candidate_details_record = CandidateDetail(
+        email=candidate_details.get("email"),
+        id_number=candidate_details.get("id_number"),
+        mobile_phone=candidate_details.get("mobile_phone"),
+        landline_phone=candidate_details.get("landline_phone"),
+        location=candidate_details.get("location"),
+        marital_status=candidate_details.get("marital_status"),
+        availability_to_travel=candidate_details.get("availability_to_travel"),
+        availability_to_move=candidate_details.get("availability_to_move"),
+        net_monthly_salary=candidate_details.get("net_monthly_salary"),
+        resume=None,  # Aquí puedes agregar lógica si quieres extraer el 'resume'
+        cv_link=candidate_details.get("cv_link"),
+        candidate_id=id_candidate,  # Relacionar con el candidato correcto
+        created_at=datetime.now(),
+        updated_at=datetime.now()
     )
     
-    db.add(candidate_detail)
-    db.commit()
-    db.refresh(candidate_detail)
-    return candidate_detail
+    # Guardar el registro en la base de datos
+    db.add(candidate_details_record)
+    db.commit()  # Confirmar los cambios
+
+    print(f"Detalles del candidato con ID {id_candidate} guardados exitosamente.")
+
+    return candidate_details_record
+

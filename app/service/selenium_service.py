@@ -49,7 +49,6 @@ async def doing_login(driver, username, password):
     try:
         logger.info("Accediendo a la página de login...")
         driver.get("https://empresa.co.computrabajo.com/Login")
-        # time.sleep(3)  # Esperar para evitar bloqueos
         
         # Esperar hasta que los campos de usuario y contraseña sean visibles
         wait = WebDriverWait(driver, 10)
@@ -57,8 +56,6 @@ async def doing_login(driver, username, password):
         contraseña = wait.until(EC.visibility_of_element_located((By.NAME, 'Password')))
 
         logger.info("Ingresando credenciales...")
-        # usuario = driver.find_element(By.NAME, 'UserName')
-        # contraseña = driver.find_element(By.NAME, 'Password')
         usuario.send_keys(username)
         contraseña.send_keys(password)
         time.sleep(1)
@@ -107,15 +104,15 @@ async def flujo_principal(db, email: str, password: str, user_id):
     try:
         logger.info("Iniciando flujo principal...")
         driver.get("https://empresa.co.computrabajo.com/Login")
-        time.sleep(3)  # Esta espera puede mantenerse para la carga inicial
+        time.sleep(3)
 
         await doing_login(driver, email, password)
 
-        # Si el login es exitoso, proceder con la extracción de ofertas
         url_offers = "https://empresa.co.computrabajo.com/Company/Offers"
         offers_data = await extract_all_offers(db, driver, url_offers, user_id)
         cadidates_from_offers = extract_candidates_from_offers(db, driver, offers_data, user_id)
-        await print_offers(offers_data)
+        print(f"Candidatos extraídos: {cadidates_from_offers}")
+        # await print_offers(offers_data)
 
     except Exception as e:
         error_message = f"Error en el flujo principal: {str(e)}"

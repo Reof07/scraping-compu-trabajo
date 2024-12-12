@@ -5,11 +5,14 @@ from selenium.common.exceptions import WebDriverException, TimeoutException
 import time
 import random
 import asyncio
+import re
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 
 from ...core.logger_config import logger
 from ..candidate_service import create_candidate
+from .details_candidate import extract_candidate_details
+from ..candidate_service import save_candidate_details
 
 def get_candidate_info(article):
     """Extra the information of a candidate from an article."""
@@ -42,6 +45,16 @@ def get_candidate_info(article):
         profile_link = article.find_element(By.CSS_SELECTOR, "a.js-o-link.nom").get_attribute("href")
     except Exception:
         profile_link = "Enlace no encontrado"
+        
+    try:
+        # Extraer el ID del candidato del link (valor del parámetro 'ims')
+        candidate_id = None
+        if profile_link != "Enlace no encontrado":
+            match = re.search(r'ims=([A-F0-9]+)', profile_link)
+            if match:
+                candidate_id = match.group(1)  # Extraemos el valor del parámetro 'ims' 
+    except Exception:
+        candidate_id = "ID no encontrado"
 
     # Devolver los datos extraídos del candidato
     return {
@@ -50,7 +63,8 @@ def get_candidate_info(article):
         "age": age,
         "studies": studies,
         "adequacy": adequacy,
-        "profile_link": profile_link
+        "profile_link": profile_link,
+        "candidate_id": candidate_id
     }
 
 def go_to_next_page(driver):
@@ -70,56 +84,6 @@ def go_to_next_page(driver):
         print(f"Error al intentar hacer clic en 'Siguiente': {e}")
         return False  # Error al intentar hacer clic, detener el bucle
 
-# def extract_candidate_info(db, driver, offer_id, applicants_link):
-#     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
-#     candidates_info = []
-
-#     # Navegar al enlace de los inscritos
-#     driver.get(applicants_link)
-#     time.sleep(random.uniform(3, 5))
-#     print(f"Abriendo el enlace de inscritos: {applicants_link}")
-
-#     while True:
-#         try:
-#             # Esperar a que los artículos de candidatos carguen
-#             WebDriverWait(driver, 10).until(
-#                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article.rowuser"))
-#             )
-
-#             # Extraer la información de los candidatos en la página actual
-#             articles = driver.find_elements(By.CSS_SELECTOR, "article.rowuser")
-
-#             for article in articles:
-#                 candidate_info = get_candidate_info(article)
-#                 candidates_info.append(candidate_info)
-#                 logger.info(f"Candidato extraido: {candidate_info}")
-#                 create_candidate(db, offer_id, candidate_info)
-#                 time.sleep(random.uniform(2, 3))
-                
-#             # Intentar cargar la siguiente página
-#             if not go_to_next_page(driver):
-#                 break  # Si no se puede cargar la siguiente página, terminar el bucle
-
-#             time.sleep(random.uniform(5, 10))
-            
-#             retry_count = 0  # Reiniciar el contador de reintentos si todo va bien
-        
-#         except (WebDriverException, TimeoutException) as e:
-#             retry_count += 1
-#             print(f"Error al cargar la página: {e}. Intentando nuevamente ({retry_count}/3)...")
-
-#             # Si hay 3 fallos consecutivos, esperar más tiempo antes de reintentar
-#             if retry_count >= 3:
-#                 print("Demasiados fallos consecutivos. Esperando más tiempo antes de intentar nuevamente.")
-#                 time.sleep(random.uniform(20, 30))  # Pausa más larga antes de reintentar
-#                 retry_count = 0  # Reiniciar el contador de reintentos
-
-#             else:
-#                 # Reintentar la carga de la página después de una pausa corta
-#                 time.sleep(random.uniform(3, 5))  # Pausa entre 3 y 5 segundos entre reintentos
-
-#     return candidates_info
-
 ######################################################################################new###########
 def extract_candidate_info(db, driver, offer_id, applicants_link):
     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
@@ -128,16 +92,14 @@ def extract_candidate_info(db, driver, offer_id, applicants_link):
     # Navegar al enlace de los inscritos
     driver.get(applicants_link)
     time.sleep(random.uniform(3, 5))
-    print(f"Abriendo el enlace de inscritos: {applicants_link}")
+    logger.info(f"Abriendo el enlace de inscritos: {applicants_link}")
 
     while True:
         try:
-            # Esperar a que los artículos de candidatos carguen
             WebDriverWait(driver, 10).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article.rowuser"))
             )
 
-            # Extraer los artículos de la página actual
             articles = driver.find_elements(By.CSS_SELECTOR, "article.rowuser")
 
             # Usar ThreadPoolExecutor para procesar los artículos en paralelo
@@ -148,12 +110,12 @@ def extract_candidate_info(db, driver, offer_id, applicants_link):
                 for future in concurrent.futures.as_completed(future_to_article):
                     candidate_info = future.result()
                     candidates_info.append(candidate_info)
-                    logger.info(f"Candidato extraído: {candidate_info}")
+                    #logger.info(f"Candidato extraído: {candidate_info}")
                     
                     # Guardar en la base de datos (puedes hacerlo asincrónicamente si tu DB lo soporta)
                     create_candidate(db, offer_id, candidate_info)
                     time.sleep(random.uniform(2, 3))
-
+                
             # Intentar cargar la siguiente página
             if not go_to_next_page(driver):
                 break  # Si no se puede cargar la siguiente página, terminar el bucle
@@ -171,7 +133,6 @@ def extract_candidate_info(db, driver, offer_id, applicants_link):
                 retry_count = 0  # Reiniciar el contador de reintentos
 
             else:
-                # Reintentar la carga de la página después de una pausa corta
                 time.sleep(random.uniform(3, 5))  # Pausa entre 3 y 5 segundos entre reintentos
 
     return candidates_info
@@ -194,12 +155,11 @@ def extract_candidates_from_offers(db, driver, offers_data, user_id):
         try:
             applicants_link = offer["applicants_link"]
             
-            #SI LA OFERTA ESTA VENCIDA, HACER UN CHECK DE LA OFERTA.
             if check_offer_status(offer, offer["status"]):
                 logger.info("Verificando si la oferta está vencida...")                
                 print(f"Abriendo el enlace de inscritos: {applicants_link}")
                 driver.get(applicants_link)
-                print("Cargando la página de inscritos...")
+                print("Verificando si la oferta está vencida...")
                 time.sleep(random.uniform(3, 5))
 
                 try:
@@ -213,10 +173,8 @@ def extract_candidates_from_offers(db, driver, offers_data, user_id):
             else:
                 logger.info(f"La oferta {offer['applicants_link']} no está vencida. Extrayendo candidatos...")
                 time.sleep(random.uniform(3, 5))
-                logger.info("Cargando la página de inscritos...")
                 extract_candidate_info(db, driver, offer["offer_id"], applicants_link)
         
-
         except Exception as e:
             print(f"Error al extraer candidatos de la oferta: {e}")
             # print(f"Traceback: {traceback.format_exc()}")
