@@ -7,6 +7,7 @@ import random
 import asyncio
 
 from ...core.logger_config import logger
+from ..candidate_service import create_candidate
 
 def get_candidate_info(article):
     """Extra the information of a candidate from an article."""
@@ -67,7 +68,7 @@ def go_to_next_page(driver):
         print(f"Error al intentar hacer clic en 'Siguiente': {e}")
         return False  # Error al intentar hacer clic, detener el bucle
 
-def extract_candidate_info(driver, applicants_link):
+def extract_candidate_info(db, driver, offer_id, applicants_link):
     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
     candidates_info = []
 
@@ -90,6 +91,7 @@ def extract_candidate_info(driver, applicants_link):
                 candidate_info = get_candidate_info(article)
                 candidates_info.append(candidate_info)
                 logger.info(f"Candidato extraido: {candidate_info}")
+                create_candidate(db, offer_id, candidate_info)
                 time.sleep(random.uniform(2, 3))
                 
             # Intentar cargar la siguiente página
@@ -133,10 +135,10 @@ def extract_candidates_from_offers(db, driver, offers_data, user_id):
     for offer in offers_data:
         try:
             applicants_link = offer["applicants_link"]
+            
             #SI LA OFERTA ESTA VENCIDA, HACER UN CHECK DE LA OFERTA.
             if check_offer_status(offer, offer["status"]):
                 logger.info("Verificando si la oferta está vencida...")                
-                # vamos a verificar a ver si 
                 print(f"Abriendo el enlace de inscritos: {applicants_link}")
                 driver.get(applicants_link)
                 print("Cargando la página de inscritos...")
@@ -152,10 +154,9 @@ def extract_candidates_from_offers(db, driver, offers_data, user_id):
                 
             else:
                 logger.info(f"La oferta {offer['applicants_link']} no está vencida. Extrayendo candidatos...")
-                # driver.get(applicants_link)
                 time.sleep(random.uniform(3, 5))
                 logger.info("Cargando la página de inscritos...")
-                extract_candidate_info(driver, applicants_link)
+                extract_candidate_info(db, driver, offer["offer_id"], applicants_link)
         
 
         except Exception as e:

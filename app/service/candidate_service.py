@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ..db.models.candidate import Candidate
 from ..db.models.candidate_detail import CandidateDetail
 
-async def create_candidate(db: Session, offer_id: str, candidate_data: dict):
+def create_candidate(db: Session, offer_id: str, candidate_data: dict):
     """
     Function to create a candidate and associate it with a job offer.
     
