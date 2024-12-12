@@ -28,3 +28,4 @@ class Offer(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False) 
     user = relationship("User", back_populates="offers")
     candidates = relationship('Candidate', back_populates='offer')
+    status = Column(String(255), nullable=True)

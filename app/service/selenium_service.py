@@ -17,27 +17,6 @@ from .scraping_service.offer import extract_all_offers
 from .candidate_service import create_candidate
 
 
-async def get_candidate_info(data, db):
-    """Get the information of the candidates from the offer."""
-    # candidate_info_list = []
-    for applicant in data:
-        candidate_info = await extract_candidate_info(driver, applicant['applicants_link'])
-        for candidate in candidate_info:
-            print(f"Candidate: {candidate}")
-            await create_candidate(db, applicant['offer_id'], candidate)
-        # candidate_info_list.append(candidate_info)
-    
-    return candidate_info
-
-async def get_candidates_details(driver, data):
-    """Get the information of the candidates from the candidate info."""
-    candidates_details_list = []
-    for applicant in data:
-        details = await extract_candidate_details(driver, applicant['applicants_link'])
-        candidates_details_list.append(details)
-    
-    return candidates_details_list
-
 def load_cookies(driver):
     """Load cookies from a file if they exist."""
     try:
@@ -118,6 +97,7 @@ async def print_offers(offers_data):
             f"Inscritos: {offer['applicants']}\n"
             f"Enlace a inscritos: {offer['applicants_link']}\n"
             f"ID de la oferta: {offer['offer_id']}\n"
+            f"Estatus: {offer['status']}\n"
             "--------------------------------------------"
         )
 

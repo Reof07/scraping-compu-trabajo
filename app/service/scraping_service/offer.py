@@ -65,6 +65,13 @@ async def process_offer(db, article, user_id):
         offer["offer_id"] = checkbox_input.get_attribute("id").split("chk_")[1]
     except Exception:
         offer["offer_id"] = "ID no encontrado"
+        
+    # Verificar si está vencida
+    try:
+        status_element = article.find_element(By.CSS_SELECTOR, "p.fc_status_vencida")
+        offer["status"] = "Vencida"
+    except Exception:
+        offer["status"] = "Activa"
 
     # Guardar la oferta en la base de datos asincrónicamente
     await create_offer(db, user_id, offer)

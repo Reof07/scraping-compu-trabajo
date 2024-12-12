@@ -10,7 +10,7 @@ async def create_offer(db: Session, user_id: int, offer_data: dict):
     try:
         # Verificar si la oferta ya existe en la base de datos
         existing_offer = db.query(Offer).filter(Offer.offer_id == offer_data["offer_id"]).first()
-        
+        print(existing_offer)
         if existing_offer:
             # Actualizar los datos de la oferta existente
             existing_offer.title = offer_data["title"]
@@ -20,6 +20,7 @@ async def create_offer(db: Session, user_id: int, offer_data: dict):
             existing_offer.expiration_date = offer_data["expiration_date"]
             existing_offer.applicants_count = offer_data["applicants"]
             existing_offer.applicants_link = offer_data["applicants_link"]
+            existing_offer.status = offer_data["status"]
             existing_offer.updated_at = datetime.now()
             db.commit()
             db.refresh(existing_offer)
@@ -36,6 +37,7 @@ async def create_offer(db: Session, user_id: int, offer_data: dict):
                 applicants_count=offer_data["applicants"],
                 applicants_link=offer_data["applicants_link"],
                 user_id=user_id,
+                status=offer_data["status"],
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
