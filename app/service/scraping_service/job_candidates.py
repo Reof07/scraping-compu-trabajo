@@ -5,6 +5,8 @@ from selenium.common.exceptions import WebDriverException, TimeoutException
 import time
 import random
 import asyncio
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 from ...core.logger_config import logger
 from ..candidate_service import create_candidate
@@ -68,6 +70,57 @@ def go_to_next_page(driver):
         print(f"Error al intentar hacer clic en 'Siguiente': {e}")
         return False  # Error al intentar hacer clic, detener el bucle
 
+# def extract_candidate_info(db, driver, offer_id, applicants_link):
+#     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
+#     candidates_info = []
+
+#     # Navegar al enlace de los inscritos
+#     driver.get(applicants_link)
+#     time.sleep(random.uniform(3, 5))
+#     print(f"Abriendo el enlace de inscritos: {applicants_link}")
+
+#     while True:
+#         try:
+#             # Esperar a que los artículos de candidatos carguen
+#             WebDriverWait(driver, 10).until(
+#                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article.rowuser"))
+#             )
+
+#             # Extraer la información de los candidatos en la página actual
+#             articles = driver.find_elements(By.CSS_SELECTOR, "article.rowuser")
+
+#             for article in articles:
+#                 candidate_info = get_candidate_info(article)
+#                 candidates_info.append(candidate_info)
+#                 logger.info(f"Candidato extraido: {candidate_info}")
+#                 create_candidate(db, offer_id, candidate_info)
+#                 time.sleep(random.uniform(2, 3))
+                
+#             # Intentar cargar la siguiente página
+#             if not go_to_next_page(driver):
+#                 break  # Si no se puede cargar la siguiente página, terminar el bucle
+
+#             time.sleep(random.uniform(5, 10))
+            
+#             retry_count = 0  # Reiniciar el contador de reintentos si todo va bien
+        
+#         except (WebDriverException, TimeoutException) as e:
+#             retry_count += 1
+#             print(f"Error al cargar la página: {e}. Intentando nuevamente ({retry_count}/3)...")
+
+#             # Si hay 3 fallos consecutivos, esperar más tiempo antes de reintentar
+#             if retry_count >= 3:
+#                 print("Demasiados fallos consecutivos. Esperando más tiempo antes de intentar nuevamente.")
+#                 time.sleep(random.uniform(20, 30))  # Pausa más larga antes de reintentar
+#                 retry_count = 0  # Reiniciar el contador de reintentos
+
+#             else:
+#                 # Reintentar la carga de la página después de una pausa corta
+#                 time.sleep(random.uniform(3, 5))  # Pausa entre 3 y 5 segundos entre reintentos
+
+#     return candidates_info
+
+######################################################################################new###########
 def extract_candidate_info(db, driver, offer_id, applicants_link):
     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
     candidates_info = []
@@ -84,23 +137,28 @@ def extract_candidate_info(db, driver, offer_id, applicants_link):
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article.rowuser"))
             )
 
-            # Extraer la información de los candidatos en la página actual
+            # Extraer los artículos de la página actual
             articles = driver.find_elements(By.CSS_SELECTOR, "article.rowuser")
 
-            for article in articles:
-                candidate_info = get_candidate_info(article)
-                candidates_info.append(candidate_info)
-                logger.info(f"Candidato extraido: {candidate_info}")
-                create_candidate(db, offer_id, candidate_info)
-                time.sleep(random.uniform(2, 3))
-                
+            # Usar ThreadPoolExecutor para procesar los artículos en paralelo
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_article = {executor.submit(get_candidate_info, article): article for article in articles}
+
+                # Esperar que todas las tareas se completen y procesar los resultados
+                for future in concurrent.futures.as_completed(future_to_article):
+                    candidate_info = future.result()
+                    candidates_info.append(candidate_info)
+                    logger.info(f"Candidato extraído: {candidate_info}")
+                    
+                    # Guardar en la base de datos (puedes hacerlo asincrónicamente si tu DB lo soporta)
+                    create_candidate(db, offer_id, candidate_info)
+                    time.sleep(random.uniform(2, 3))
+
             # Intentar cargar la siguiente página
             if not go_to_next_page(driver):
                 break  # Si no se puede cargar la siguiente página, terminar el bucle
 
             time.sleep(random.uniform(5, 10))
-            
-            retry_count = 0  # Reiniciar el contador de reintentos si todo va bien
         
         except (WebDriverException, TimeoutException) as e:
             retry_count += 1

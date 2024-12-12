@@ -6,8 +6,8 @@ from ..core.config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=50,
+    max_overflow=50,
     pool_timeout=30,
     pool_recycle=1800,
     connect_args={"connect_timeout": 10}, 
@@ -31,3 +31,4 @@ def get_db():
         yield db
     finally:
         db.close()
+        
