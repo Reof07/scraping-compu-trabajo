@@ -6,6 +6,7 @@ import time
 import random
 import asyncio
 
+from ...core.logger_config import logger
 
 def get_candidate_info(article):
     """Extra the information of a candidate from an article."""
@@ -66,12 +67,13 @@ def go_to_next_page(driver):
         print(f"Error al intentar hacer clic en 'Siguiente': {e}")
         return False  # Error al intentar hacer clic, detener el bucle
 
-async def extract_candidate_info(driver, applicants_link):
+def extract_candidate_info(driver, applicants_link):
     """Extrae la información de los candidatos navegando por las páginas de inscritos."""
     candidates_info = []
 
     # Navegar al enlace de los inscritos
     driver.get(applicants_link)
+    time.sleep(random.uniform(3, 5))
     print(f"Abriendo el enlace de inscritos: {applicants_link}")
 
     while True:
@@ -87,7 +89,7 @@ async def extract_candidate_info(driver, applicants_link):
             for article in articles:
                 candidate_info = get_candidate_info(article)
                 candidates_info.append(candidate_info)
-
+                logger.info(f"Candidato extraido: {candidate_info}")
                 time.sleep(random.uniform(2, 3))
                 
             # Intentar cargar la siguiente página
@@ -113,3 +115,49 @@ async def extract_candidate_info(driver, applicants_link):
                 time.sleep(random.uniform(3, 5))  # Pausa entre 3 y 5 segundos entre reintentos
 
     return candidates_info
+
+def check_offer_status(offer, status):
+    """Verifica si la oferta está vencida."""
+    try:
+        if status == "Vencida":
+            return True
+        else:
+            return False
+    except Exception:
+        return False
+
+def extract_candidates_from_offers(db, driver, offers_data, user_id):
+    """Extrae los candidatos de las ofertas extraídas."""
+    print("Extrayendo candidatos de las ofertas...")
+    candidates_from_offers = []
+    for offer in offers_data:
+        try:
+            applicants_link = offer["applicants_link"]
+            #SI LA OFERTA ESTA VENCIDA, HACER UN CHECK DE LA OFERTA.
+            if check_offer_status(offer, offer["status"]):
+                logger.info("Verificando si la oferta está vencida...")                
+                # vamos a verificar a ver si 
+                print(f"Abriendo el enlace de inscritos: {applicants_link}")
+                driver.get(applicants_link)
+                print("Cargando la página de inscritos...")
+                time.sleep(random.uniform(3, 5))
+
+                try:
+                    element = driver.find_element(By.XPATH, "//h3[text()='Su oferta de empleo ha vencido']")
+                    texto_encontrado = element.text
+                    print(texto_encontrado)
+                    logger.info("La oferta está vencida. por lo tanto, no se extraen candidatos.")
+                except Exception as e:
+                    print(f"No se encontró el elemento: {e}")
+                
+            else:
+                logger.info(f"La oferta {offer['applicants_link']} no está vencida. Extrayendo candidatos...")
+                # driver.get(applicants_link)
+                time.sleep(random.uniform(3, 5))
+                logger.info("Cargando la página de inscritos...")
+                extract_candidate_info(driver, applicants_link)
+        
+
+        except Exception as e:
+            print(f"Error al extraer candidatos de la oferta: {e}")
+            # print(f"Traceback: {traceback.format_exc()}")

@@ -10,7 +10,6 @@ async def create_offer(db: Session, user_id: int, offer_data: dict):
     try:
         # Verificar si la oferta ya existe en la base de datos
         existing_offer = db.query(Offer).filter(Offer.offer_id == offer_data["offer_id"]).first()
-        print(existing_offer)
         if existing_offer:
             # Actualizar los datos de la oferta existente
             existing_offer.title = offer_data["title"]

@@ -10,7 +10,7 @@ import pickle
 
 from ..core.logger_config import logger
 from ..core.selenium import driver
-from .scraping_service.job_candidates import extract_candidate_info
+from .scraping_service.job_candidates import extract_candidates_from_offers
 from .scraping_service.details_candidate import extract_candidate_details
 from .offer_service import create_offer
 from .scraping_service.offer import extract_all_offers
@@ -114,6 +114,7 @@ async def flujo_principal(db, email: str, password: str, user_id):
         # Si el login es exitoso, proceder con la extracción de ofertas
         url_offers = "https://empresa.co.computrabajo.com/Company/Offers"
         offers_data = await extract_all_offers(db, driver, url_offers, user_id)
+        cadidates_from_offers = extract_candidates_from_offers(db, driver, offers_data, user_id)
         await print_offers(offers_data)
 
     except Exception as e:
