@@ -5,8 +5,8 @@ from fastapi import (
     HTTPException,
     Header
     )
+
 from fastapi.security import (
-    OAuth2PasswordBearer,
     HTTPBearer,
     HTTPAuthorizationCredentials
     )
@@ -20,9 +20,10 @@ from ....service.selenium_service import (
 )
 from ....db.database import get_db
 from ....schemas.user_schema import UserInfo
+from ....schemas.generic import OffersList
 from ....service.user_service import get_user_by_email
 
-# Esquema de seguridad para Bearer Token
+
 bearer_scheme = HTTPBearer()
 
 scraping_router = APIRouter(
@@ -31,8 +32,8 @@ scraping_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
-def validate_token(
+#ESTO ES UNA DEPENDENCIA
+async def validate_token(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> str:
@@ -61,14 +62,14 @@ def validate_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token validation failed: {str(e)}",
         )
-
-
-@scraping_router.get(
+        
+@scraping_router.post(
     "/",
     summary="Scrape job offers",
     description="Scrape job offers from the website.",
     )
 async def scrape_job_offers(
+    list_offers: OffersList,
     current_user: str = Depends(validate_token),
     db: Session = Depends(get_db)
 ):
@@ -76,12 +77,13 @@ async def scrape_job_offers(
     user = get_user_by_email(db, email)
     user = UserInfo.model_validate(user)
     password = user.password
-    print(user)
     
     try:
-        driver.get("https://www.google.com")
-        print(driver.title)
-        await flujo_principal(db, email, password, user.id)
+        
+        await flujo_principal(db, email, password, list_offers)
+
     except Exception as e:
         print(f"Hubo un error en la ejecución principal: {e}")
     return {"message": "Hello, World! Scrape job offers."}
+
+

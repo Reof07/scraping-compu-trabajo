@@ -1,11 +1,16 @@
 from pydantic import BaseModel
 from typing import List
 
+
 class GenericResponse(BaseModel):
     message: str
     detail: str = None  
     data: dict = None 
-    
+class Offer(BaseModel):
+    url: str
+
+class OffersList(BaseModel):
+    offers: List[Offer]
     
 # Respuestas comunes
 # common_responses = {

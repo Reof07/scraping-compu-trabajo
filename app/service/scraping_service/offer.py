@@ -7,6 +7,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    TimeoutException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+    ElementClickInterceptedException,
+    WebDriverException,
+    ElementNotInteractableException
+)
 
 from ..offer_service import create_offer
 from ...core.logger_config import logger
@@ -81,16 +92,89 @@ async def process_offer(db, article, user_id):
 
     return offer
 
-async def go_to_next_page(driver):
+def go_to_next_page(driver):
     """Manejo de paginación de la oferta (ir a la siguiente página)."""
     try:
-        next_button = driver.find_element(By.CSS_SELECTOR, "a.b_next")
-        next_button.click()
-        WebDriverWait(driver, 10).until(EC.staleness_of(next_button))  # Asegura que la página anterior se haya cargado completamente
-        await asyncio.sleep(random.uniform(3, 5))  # Usamos asyncio.sleep para permitir que se ejecute sin bloquear
-        return True
-    except Exception:
-        return False
+        siguiente_boton = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//a[@class='b_next']/span[contains(text(),'Siguiente')]"))
+    )
+        siguiente_boton.click()
+    except Exception as e:
+        print(f"Error al hacer clic en 'Siguiente': {e}")
+    
+    # try:
+    #     next_button = driver.find_element(By.CSS_SELECTOR, "a.b_next")
+    #     next_button.click()
+    #     WebDriverWait(driver, 60).until(EC.staleness_of(next_button))  
+    #     # await asyncio.sleep(random.uniform(3, 5))
+    #     time.sleep(random.uniform(3, 5))
+    #     return True
+    # except Exception:
+    #     return False
+
+# def go_to_next_page(driver, max_attempts=3):
+#     """Manejo de paginación con comprobaciones de clickabilidad."""
+#     for attempt in range(max_attempts):
+#         try:
+#             # 1. Espera explicita con mayor tiempo.
+#             next_button = WebDriverWait(driver, 20).until(
+#                     EC.element_to_be_clickable((By.XPATH, "//a[@class='b_next']/span[contains(text(),'Siguiente')]"))
+#                 )
+
+#             # 2. Comprobación de visibilidad y interactividad ANTES del click.
+#             if not next_button.is_displayed():
+#                 print(f"Intento {attempt + 1}: El botón 'Siguiente' no está visible.")
+#                 continue  # Ir al siguiente intento
+
+#             if not next_button.is_enabled():
+#                 print(f"Intento {attempt + 1}: El botón 'Siguiente' no está habilitado.")
+#                 continue
+            
+#             # 3. Rebuscar el elemento JUSTO antes del click (para StaleElementReferenceException).
+#             next_button = driver.find_element(By.CSS_SELECTOR, "nav.pag_numeric a.b_next")
+
+#             next_button.click()
+            
+#             # 4. Espera con un selector MÁS específico para la nueva página
+#             WebDriverWait(driver, 60).until(
+#                 EC.presence_of_element_located((By.CSS_SELECTOR, "#pager_Pager_PageSelected a.sel:not([id='1'])")) # que sea distinto a 1
+
+#             )
+#             time.sleep(random.uniform(10, 20)) #Reducimos el tiempo de espera
+#             print("Página siguiente cargada correctamente.")
+#             return True
+
+#         except TimeoutException:
+#             print(f"Intento {attempt + 1}: Tiempo de espera agotado.")
+#         except NoSuchElementException:
+#             print(f"Intento {attempt + 1}: Botón 'Siguiente' no encontrado.")
+#             return False
+#         except StaleElementReferenceException:
+#             print(f"Intento {attempt + 1}: Elemento obsoleto. Recargando página...")
+#             driver.refresh()
+#             time.sleep(5) # tiempo de espera más corto
+#         except ElementClickInterceptedException as e:
+#             print(f"Intento {attempt + 1}: Clic interceptado: {e}")
+#             # AÑADIR DEBUG: Tomar una captura de pantalla para ver qué está bloqueando el clic:
+#             driver.save_screenshot(f"error_click_{attempt}.png")
+#             #Además imprimimos la estructura html de la parte donde se encuentra el boton
+#             print(driver.find_element(By.CSS_SELECTOR,"nav.pag_numeric").get_attribute('outerHTML'))
+#         except ElementNotInteractableException as e:
+#             print(f"Intento {attempt + 1}: Elemento no interactuable: {e}")
+#             driver.save_screenshot(f"error_no_interact_{attempt}.png") #Captura de pantalla
+#             print(driver.find_element(By.CSS_SELECTOR,"nav.pag_numeric").get_attribute('outerHTML'))
+#         except WebDriverException as e:
+#             print(f"Intento {attempt + 1}: Error de WebDriver: {e}")
+#             return False
+#         except Exception as e:
+#             print(f"Intento {attempt + 1}: Error inesperado: {type(e).__name__}: {e}")
+#             return False
+
+#     print(f"No se pudo avanzar después de {max_attempts} intentos.")
+#     return False
+
+
+
 
 async def extract_all_offers(db, driver, url, user_id, batch_size=10):
     """Extrae todas las ofertas laborales desde la página procesándolas en lotes."""
@@ -129,7 +213,7 @@ async def extract_all_offers(db, driver, url, user_id, batch_size=10):
                 offers_data.extend(batch_results)  # Añadimos los resultados del lote a la lista final
 
             # Intentar avanzar a la siguiente página
-            if not await go_to_next_page(driver):
+            if not go_to_next_page(driver):
                 print("No se encontró el botón 'Siguiente', terminando la extracción.")
                 break
 
