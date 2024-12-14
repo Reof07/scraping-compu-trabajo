@@ -1,6 +1,7 @@
-import datetime
+from datetime import datetime
 
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.mysql import insert
 from sqlalchemy import exc
 
 from ..db.models.candidate import Candidate
@@ -19,11 +20,6 @@ def create_candidate(db: Session, offer_id: str, candidate_data: dict):
         
     Returns:
     """
-    #TODO: intentar crear una conexion de base de datos aqui y evitar reciir una
-    # print(f"candidate_data: {candidate_data}")
-    # print(f"offer_id: {offer_id}")
-    
-    #crear session
     db = SessionLocal()
     try:
         candidate = Candidate(
@@ -49,22 +45,72 @@ def create_candidate(db: Session, offer_id: str, candidate_data: dict):
     finally:
         db.close()
 
-def _save_candidates_batch(candidates_batch: list):
-    """
-    Guarda un lote de candidatos en la base de datos.
+# async def _save_candidates_batch(candidates_batch: list):
+#     """
+#     Guarda un lote de candidatos en la base de datos.
     
+#     Args:
+#         db: Sesión de la base de datos.
+#         candidates_batch: Lista de candidatos a guardar.
+#     """
+#     db = SessionLocal()
+#     try:
+#         db.bulk_insert_mappings(Candidate, candidates_batch)
+#         db.commit()
+#         logger.info(f"Guardado un lote de {len(candidates_batch)} candidatos.")
+#     except exc.SQLAlchemyError as e:
+#         db.rollback()
+#         logger.error(f"Error al guardar el lote: {e}")
+#         db.close()
+
+async def _save_candidates_batch(candidates_batch: list):
+    """
+    Guarda un lote de candidatos en la base de datos evitando duplicados.
+    Actualiza los registros si ya existen, o los crea si no.
+
     Args:
-        db: Sesión de la base de datos.
         candidates_batch: Lista de candidatos a guardar.
     """
     db = SessionLocal()
     try:
-        db.bulk_insert_mappings(Candidate, candidates_batch)
-        db.commit()
-        print(f"Guardado un lote de {len(candidates_batch)} candidatos.")
+        for candidate in candidates_batch:
+            # Verificar si el candidato ya existe
+            existing_candidate = db.query(Candidate).filter(Candidate.uuid_candidate == candidate['uuid_candidate']).first()
+            
+            if existing_candidate:
+                # Si ya existe, actualizar el registro
+                existing_candidate.name = candidate['name']
+                existing_candidate.application_date = candidate['application_date']
+                existing_candidate.age = candidate['age']
+                existing_candidate.education_level = candidate['education_level']
+                existing_candidate.suitability = candidate['suitability']
+                existing_candidate.details_link = candidate['details_link']
+                existing_candidate.uuid_offer = candidate['uuid_offer']
+                existing_candidate.updated_at = datetime.now()
+
+                db.commit()
+            else:
+                # Si no existe, insertar el nuevo candidato
+                new_candidate = Candidate(
+                    name=candidate['name'],
+                    application_date=candidate['application_date'],
+                    age=candidate['age'],
+                    education_level=candidate['education_level'],
+                    suitability=candidate['suitability'],
+                    details_link=candidate['details_link'],
+                    uuid_offer=candidate['uuid_offer'],
+                    uuid_candidate=candidate['uuid_candidate'],
+                    created_at=datetime.now(),
+                    updated_at=datetime.now()
+                )
+                db.add(new_candidate)
+                db.commit()
+
+        logger.info(f"Guardado o actualizado un lote de {len(candidates_batch)} candidatos.")
     except exc.SQLAlchemyError as e:
         db.rollback()
-        print(f"Error al guardar el lote: {e}")
+        logger.error(f"Error al guardar o actualizar el lote: {e}")
+    finally:
         db.close()
 
 

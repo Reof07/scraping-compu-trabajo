@@ -80,22 +80,21 @@ async def get_offers(driver, list_offers):
     
     for offer in list_offers.offers: 
         url = offer.url
-        print(f"Abriendo el enlace de la oferta: {url}")
+        logger.info(f"Abriendo el enlace de la oferta: {url}")
         
         driver.get(url)
         WebDriverWait(driver, 10)
-        print(driver.current_url)
         
-        print("Verificando si la oferta está vencida...")
+        logger.info("Verificando si la oferta está vencida...")
         time.sleep(random.uniform(3, 5))  
         try:
             element = driver.find_element(By.XPATH, "//h3[text()='Su oferta de empleo ha vencido']")
             texto_encontrado = element.text
             if texto_encontrado:
-                print(texto_encontrado)
-                print(f"La oferta {url} está vencida..")
+                logger.info(texto_encontrado)
+                logger.info(f"La oferta {url} está vencida..")
         except Exception:
-            print(f"La oferta {url} no está vencida..")
+            logger.info(f"La oferta {url} no está vencida..")
             validate_links.append(url)
     
     return validate_links

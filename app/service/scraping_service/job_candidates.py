@@ -83,7 +83,7 @@ async def extract_candidatos(driver, offer_id, batch_size=50):
     
     
     logger.info('Procesando la extracción...')
-    logger(driver.current_url)
+    logger.info(driver.current_url)
     
     all_candidates = []
 
@@ -110,14 +110,14 @@ async def extract_candidatos(driver, offer_id, batch_size=50):
             all_candidates.append(candidate_data)
 
             if len(batch) >= batch_size:
-                _save_candidates_batch(batch)
+                await _save_candidates_batch(batch)
                 batch.clear()
 
         except Exception as e:
             logger.info(f"Error procesando el candidato: {e}")
 
     if batch:
-        _save_candidates_batch(batch)
+        await _save_candidates_batch(batch)
 
     logger.info('Fin de la extracción')
     return all_candidates
@@ -135,6 +135,11 @@ async def process_pagination(driver, wait, url):
     try:
         driver.get(url)
         logger.info(f"Página inicial: {driver.current_url}")
+        
+        if driver.current_url == "https://empresa.co.computrabajo.com/Account/Used":
+            logger.info("La cuenta de usuario ha sido utilizada....")
+            return
+
         current_url = driver.current_url
         offer_id = extract_offer_id(current_url)
         current_page = 1
