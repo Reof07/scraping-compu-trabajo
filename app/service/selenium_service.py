@@ -104,20 +104,18 @@ async def get_offers(driver, list_offers):
 async def flujo_principal(db, email: str, password: str, list_offers):
     """Take control of the entire process."""
     try:
-        logger.info("Iniciando flujo principal...")
+        logger.info("Iniciando extracción de candidatos...")    
         
         #doing login
         await doing_login(driver, email, password)
         
         #validate links
         list_offers = await get_offers(driver, list_offers)
-        print(f"Lista de ofertas validadas: {list_offers}")
         
         wait = WebDriverWait(driver, 10)
         
         for url in list_offers:
             await process_pagination(driver, wait, url)
-
 
     except Exception as e:
         error_message = f"Error en el flujo principal: {str(e)}"

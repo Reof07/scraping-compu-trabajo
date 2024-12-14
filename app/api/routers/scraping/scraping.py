@@ -22,6 +22,7 @@ from ....db.database import get_db
 from ....schemas.user_schema import UserInfo
 from ....schemas.generic import OffersList
 from ....service.user_service import get_user_by_email
+from ....core.logger_config import logger
 
 
 bearer_scheme = HTTPBearer()
@@ -83,7 +84,7 @@ async def scrape_job_offers(
         await flujo_principal(db, email, password, list_offers)
 
     except Exception as e:
-        print(f"Hubo un error en la ejecución principal: {e}")
+        logger.error(f"Hubo un error en la ejecución principal: {e}")
     return {"message": "Hello, World! Scrape job offers."}
 
 
