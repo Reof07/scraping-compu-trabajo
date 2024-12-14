@@ -37,7 +37,6 @@ async def save_cookies(driver):
         logger.error(f"Error al guardar cookies: {e}")
         
         
-# Función para realizar login
 async def doing_login(driver, username, password):
     """Perform login with the provided credentials."""
     try:
@@ -100,8 +99,6 @@ async def get_offers(driver, list_offers):
             validate_links.append(url)
     
     return validate_links
-
-
 
 
 async def flujo_principal(db, email: str, password: str, list_offers):

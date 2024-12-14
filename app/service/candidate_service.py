@@ -1,6 +1,7 @@
 import datetime
 
 from sqlalchemy.orm import Session
+from sqlalchemy import exc
 
 from ..db.models.candidate import Candidate
 from ..db.models.candidate_detail import CandidateDetail
@@ -48,6 +49,23 @@ def create_candidate(db: Session, offer_id: str, candidate_data: dict):
     finally:
         db.close()
 
+def _save_candidates_batch(candidates_batch: list):
+    """
+    Guarda un lote de candidatos en la base de datos.
+    
+    Args:
+        db: Sesión de la base de datos.
+        candidates_batch: Lista de candidatos a guardar.
+    """
+    db = SessionLocal()
+    try:
+        db.bulk_insert_mappings(Candidate, candidates_batch)
+        db.commit()
+        print(f"Guardado un lote de {len(candidates_batch)} candidatos.")
+    except exc.SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error al guardar el lote: {e}")
+        db.close()
 
 
 def save_candidate_details(driver, candidate_details, id_candidate, db: Session):

@@ -6,6 +6,9 @@ from selenium.common.exceptions import WebDriverException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from ..candidate_service import _save_candidates_batch
+
+from ...utils.utils import extract_offer_id
 
 
 async def extract_candidate_info(driver):
@@ -76,9 +79,13 @@ async def extract_candidate_info(driver):
     return candidates_info
 
 
-async def extract_candidatos(driver):
+async def extract_candidatos(driver, offer_id, batch_size=50):
     """ function to extract candidates from the website """
     info_candidate = {}  
+    all_candidates = []  # Lista de todos los candidatos procesados
+    batch = []  # Lote actual
+    
+    
     print('Procesando la extracción...')
     print(driver.current_url)
     
@@ -95,43 +102,34 @@ async def extract_candidatos(driver):
     # Procesar los candidatos extraídos
     for candidate in candidates_info:
         try:
-            # Extraer detalles de cada candidato
-            name = candidate.get('name', 'N/A')
-            applied_date = candidate.get('applied_date', 'N/A')
-            age = candidate.get('age', 'N/A')
-            studies = candidate.get('studies', 'N/A')
-            adequacy = candidate.get('adequacy', 'N/A')
-            profile_link = candidate.get('profile_link', 'N/A')
-            candidate_id = candidate.get('candidate_id', 'N/A')
-
-            info_candidate = {
-                'nombre': name,
-                'fecha_aplicacion': applied_date,
-                'edad': age,
-                'nivel_estudios': studies,
-                'adecuacion': adequacy,
-                'link_detalles': profile_link,
-                'candidate_id': candidate_id
+            # Procesar datos del candidato
+            candidate_data = {
+                'name': candidate.get('name', 'N/A'),
+                'application_date': candidate.get('applied_date', 'N/A'),
+                'age': candidate.get('age', 'N/A'),
+                'education_level': candidate.get('studies', 'N/A'),
+                'suitability': candidate.get('adequacy', 'N/A'),
+                'details_link': candidate.get('profile_link', 'N/A'),
+                'uuid_candidate': candidate.get('candidate_id', 'N/A'),
+                'uuid_offer': offer_id
             }
+            batch.append(candidate_data)
+            all_candidates.append(candidate_data)
 
-            all_candidates.append(info_candidate)
-                                
-            # Mostrar los detalles del candidato
-            print(f"Nombre: {name}")
-            print(f"Fecha de aplicación: {applied_date}")
-            print(f"Edad: {age}")
-            print(f"Nivel de estudios: {studies}")
-            print(f"Adecuación: {adequacy}")
-            print(f"Link Detalles: {profile_link}")
-            print(f"ID del candidato: {candidate_id}")
-            # print(f"Detalles del candidato: {combined_candidate_data}")
-            print("-----------------------------------")
-        
+            # Guardar en la base de datos si alcanzamos el tamaño del lote
+            if len(batch) >= batch_size:
+                _save_candidates_batch(batch)
+                batch.clear()
+
         except Exception as e:
             print(f"Error procesando el candidato: {e}")
-    
+
+    # Guardar los candidatos restantes en el lote
+    if batch:
+        _save_candidates_batch(batch)
+
     print('Fin de la extracción')
-    return  all_candidates
+    return all_candidates
 
 async def process_pagination(driver, wait, url):
     """
@@ -145,6 +143,10 @@ async def process_pagination(driver, wait, url):
     """
     try:
         driver.get(url)
+        print(f"Página inicial: {driver.current_url}")
+        current_url = driver.current_url
+        offer_id = extract_offer_id(current_url)
+        print(f"ID de la oferta: {offer_id}")
         current_page = 1
 
         while True:
@@ -167,7 +169,7 @@ async def process_pagination(driver, wait, url):
                     break
 
                 # Llama a la función de extracción
-                candidates = await extract_candidatos(driver)
+                candidates = await extract_candidatos(driver, offer_id)
 
                 time.sleep(3)
 
