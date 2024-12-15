@@ -5,6 +5,7 @@ from fastapi import (
     HTTPException,
     Header
     )
+from fastapi.responses import FileResponse
 
 from fastapi.security import (
     HTTPBearer,
@@ -88,3 +89,17 @@ async def scrape_job_offers(
     return {"message": "Hello, World! Scrape job offers."}
 
 
+@scraping_router.get(
+    "/export-cv-excel",
+    summary="Export candidates information to Excel",
+    description="Export list the curriculum vitae of the candidates.",
+    )
+async def export_cv_excel(
+    current_user: str = Depends(validate_token),
+    db: Session = Depends(get_db)
+):
+    return FileResponse(
+        path="file_path",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="candidates_export.xlsx",
+    )

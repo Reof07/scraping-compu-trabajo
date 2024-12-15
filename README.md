@@ -41,6 +41,7 @@ alembic upgrade head
 
 1. development:
 ```bash
+venv\Scripts\activate
 uvicorn app.main:app --reload
 ```
 

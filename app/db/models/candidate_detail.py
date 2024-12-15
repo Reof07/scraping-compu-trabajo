@@ -28,7 +28,8 @@ class CandidateDetail(Base):
     languages = Column(String(255), nullable=True)  
     resume = Column(String(255), nullable=True)
     cv_link = Column(String(255), nullable=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), index=True, nullable=False)
+    uuid_candidate = Column(String(255), index=True, nullable=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), index=True, nullable=True)
 
     candidate = relationship("Candidate", back_populates="details")
     

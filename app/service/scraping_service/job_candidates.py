@@ -1,14 +1,16 @@
 import time
 import re
 
-from selenium.common.exceptions import WebDriverException, TimeoutException
+from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from ..candidate_service import _save_candidates_batch
+from ..candidate_service import save_candidate_details_batch
 
 from ...utils.utils import extract_offer_id
+from .details_candidate import extract_candidate_details
 from ...core.logger_config import logger
 
 
@@ -75,7 +77,7 @@ async def extract_candidate_info(driver):
     return candidates_info
 
 
-async def extract_candidatos(driver, offer_id, batch_size=50):
+async def extract_candidatos(driver, offer_id, url, wait, batch_size=50):
     """ function to extract candidates from the website """
     info_candidate = {}  
     all_candidates = []  
@@ -94,6 +96,7 @@ async def extract_candidatos(driver, offer_id, batch_size=50):
         logger.info("No se encontraron candidatos.")
         return 
     
+    
     for candidate in candidates_info:
         try:
             candidate_data = {
@@ -106,9 +109,10 @@ async def extract_candidatos(driver, offer_id, batch_size=50):
                 'uuid_candidate': candidate.get('candidate_id', 'N/A'),
                 'uuid_offer': offer_id
             }
+            
             batch.append(candidate_data)
             all_candidates.append(candidate_data)
-
+                    
             if len(batch) >= batch_size:
                 await _save_candidates_batch(batch)
                 batch.clear()
@@ -163,15 +167,34 @@ async def process_pagination(driver, wait, url):
                     logger.info("No se detectó la página actual.")
                     break
 
-                candidates = await extract_candidatos(driver, offer_id)
+                candidates = await extract_candidatos(driver, offer_id, url,wait)
+                
+                logger.info(f"nuemro de candidatos: {len(candidates)}")
+                
+                logger.info(f"procesados la extracion de detalles  de: {len(candidates)} candidatos.")
+                
+                details_list =[]
+                for candidate in candidates:
+                    details = await extract_candidate_details(driver, candidate['details_link'], candidate['uuid_candidate'])
+                    details_list.append(details)
+                    
+                    print(f"Guardando la extracion de detalles  de: {len(candidates)} candidatos.")
+                    
+                    await save_candidate_details_batch(details_list)
+                    details_list.clear()
+                time.sleep(5)
+                
+                try:
+                    # Busca el botón "Siguiente" y verifica si está habilitado
+                    next_button = pager.find_element(By.CLASS_NAME, "b_next")
 
-                time.sleep(3)
-
-                # Busca el botón "Siguiente" y verifica si está habilitado
-                next_button = pager.find_element(By.CLASS_NAME, "b_next")
-                if "disabled" in next_button.get_attribute("class"):
-                    logger.info("Botón 'Siguiente' deshabilitado. Fin del paginado.")
-                    break
+                
+                except TimeoutException:
+                    print("No se encontró el botón 'Siguiente' después del tiempo de espera.")
+                    return None
+                except NoSuchElementException:
+                    print("No se encontró el botón 'Siguiente'.")
+                    return None
 
                 # Haz clic en "Siguiente" para avanzar
                 logger.info(f"Pasando a la página: {current_page + 1}")
@@ -185,4 +208,5 @@ async def process_pagination(driver, wait, url):
                 break
 
     finally:
+        driver.close()
         driver.quit()
