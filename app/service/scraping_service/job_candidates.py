@@ -178,7 +178,7 @@ async def process_pagination(driver, wait, url):
                     details = await extract_candidate_details(driver, candidate['details_link'], candidate['uuid_candidate'])
                     details_list.append(details)
                     
-                    print(f"Guardando la extracion de detalles  de: {len(candidates)} candidatos.")
+                    logger.info(f"Guardando la extracion de detalles  de: {len(candidates)} candidatos.")
                     
                     await save_candidate_details_batch(details_list)
                     details_list.clear()

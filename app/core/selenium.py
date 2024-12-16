@@ -11,7 +11,10 @@ chrome_driver_path = "C:\\SeleniumDrivers\\chromedriver.exe"  #linux
 options = Options()
 options.add_argument('--headless')  # Opcional: Si no necesitas una ventana de navegador visible
 options.add_argument('--no-sandbox')
+options.add_argument("--disable-gpu")
+options.add_argument("--disable-software-rasterizer")
 options.add_argument('--disable-dev-shm-usage')
+options.add_argument("--disable-extensions")
 options.add_argument('--disable-blink-features=AutomationControlled') 
 options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.109 Safari/537.36')  # Cambia el User-Agent
 

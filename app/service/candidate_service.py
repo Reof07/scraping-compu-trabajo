@@ -1,8 +1,15 @@
+import os
+import tempfile
 from datetime import datetime
+
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy import exc
+
+from openpyxl import Workbook
 
 from ..db.models.candidate import Candidate
 from ..db.models.candidate_detail import CandidateDetail
@@ -163,3 +170,76 @@ async def save_candidate_details_batch(candidate_details_batch: list):
         print(f"Error al guardar o actualizar el lote: {e}")
     finally:
         db.close()
+
+
+async def get_candidates_by_offer(
+    uuid_offer: str,
+    db: Session,
+    page: int = 1,
+    page_size: int = 10,
+    ):
+    """ Get all candidates of an offer with pagination, along with their details. """
+    
+    offset = (page - 1) * page_size
+    candidates = (
+            db.query(Candidate)
+            .filter(Candidate.uuid_offer == uuid_offer)
+            .offset(offset)
+            .limit(page_size)
+            .all()
+        )
+
+    if not candidates:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontraron candidatos para esta oferta."
+        )
+
+    total_candidates = (
+            db.query(Candidate)
+            .filter(Candidate.uuid_offer == uuid_offer)
+            .count()
+        )
+
+    response = []
+    for candidate in candidates:
+        candidate_details = (
+            db.query(CandidateDetail)
+            .filter(CandidateDetail.uuid_candidate == candidate.uuid_candidate)
+            .first()
+        )
+
+        candidate_data = {
+                "id": candidate.id,
+                "name": candidate.name,
+                "application_date": candidate.application_date,
+                "age": candidate.age,
+                "education_level": candidate.education_level,
+                "suitability": candidate.suitability,
+                "details_link": candidate.details_link,
+                "uuid_offer": candidate.uuid_offer,
+                "uuid_candidate": candidate.uuid_candidate,
+                "details": {
+                    "email": candidate_details.email if candidate_details else None,
+                    "id_number": candidate_details.id_number if candidate_details else None,
+                    "mobile_phone": candidate_details.mobile_phone if candidate_details else None,
+                    "landline_phone": candidate_details.landline_phone if candidate_details else None,
+                    "location": candidate_details.location if candidate_details else None,
+                    "marital_status": candidate_details.marital_status if candidate_details else None,
+                    "availability_to_travel": candidate_details.availability_to_travel if candidate_details else None,
+                    "availability_to_move": candidate_details.availability_to_move if candidate_details else None,
+                    "net_monthly_salary": candidate_details.net_monthly_salary if candidate_details else None,
+                    "languages": candidate_details.languages if candidate_details else None,
+                    "resume": candidate_details.resume if candidate_details else None,
+                    "cv_link": candidate_details.cv_link if candidate_details else None,
+                },
+            }
+        response.append(candidate_data)
+
+    return {
+            "page": page,
+            "page_size": page_size,
+            "total_candidates": total_candidates,
+            "total_pages": (total_candidates + page_size - 1) // page_size,
+            "candidates": response,
+        }
