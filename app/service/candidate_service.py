@@ -1,8 +1,4 @@
-import os
-import tempfile
 from datetime import datetime
-
-from fastapi.responses import FileResponse
 from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
@@ -115,14 +111,10 @@ async def save_candidate_details_batch(candidate_details_batch: list):
     db = SessionLocal()
     try:
         for details in candidate_details_batch:
-            # Verificar si ya existe el registro
             existing_details = db.query(CandidateDetail).filter(
                 CandidateDetail.uuid_candidate == details['uuid_candidate']
             ).first()
-
-            #get uuid_candidate
             
-
             if existing_details:
                 # Actualizar los campos existentes
                 existing_details.email = details.get("email", existing_details.email)

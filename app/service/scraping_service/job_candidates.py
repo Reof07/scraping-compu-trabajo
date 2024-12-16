@@ -150,7 +150,6 @@ async def process_pagination(driver, wait, url):
 
         while True:
             try:
-                # Espera y detecta la barra de paginación
                 pager = wait.until(EC.presence_of_element_located((By.ID, "pager_Pager_PageSelected")))
                 pages = pager.find_elements(By.TAG_NAME, "a")
 
@@ -169,19 +168,19 @@ async def process_pagination(driver, wait, url):
 
                 candidates = await extract_candidatos(driver, offer_id, url,wait)
                 
-                logger.info(f"nuemro de candidatos: {len(candidates)}")
+                logger.info(f"numero de candidatos: {len(candidates)}")
                 
-                logger.info(f"procesados la extracion de detalles  de: {len(candidates)} candidatos.")
+                logger.info(f"procesados la extracción de detalles  de: {len(candidates)} candidatos.")
                 
                 details_list =[]
                 for candidate in candidates:
                     details = await extract_candidate_details(driver, candidate['details_link'], candidate['uuid_candidate'])
                     details_list.append(details)
+                                        
                     
-                    logger.info(f"Guardando la extracion de detalles  de: {len(candidates)} candidatos.")
-                    
-                    await save_candidate_details_batch(details_list)
-                    details_list.clear()
+                await save_candidate_details_batch(details_list) ## saque esto del for
+                details_list.clear()
+                
                 time.sleep(5)
                 
                 try:
@@ -208,5 +207,5 @@ async def process_pagination(driver, wait, url):
                 break
 
     finally:
-        driver.close()
-        driver.quit()
+        logger.info(f"Finalizando extracción de candidatos para la oferta: {url}")
+

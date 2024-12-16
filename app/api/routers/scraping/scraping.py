@@ -6,8 +6,9 @@ from fastapi import (
     Depends,
     HTTPException,
     Header,
-    Query
+    Query,
     )
+from fastapi import BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.security import (
     HTTPBearer,
@@ -80,6 +81,7 @@ async def validate_token(
     )
 async def scrape_job_offers(
     list_offers: OffersList,
+    background_tasks: BackgroundTasks,
     current_user: str = Depends(validate_token),
     db: Session = Depends(get_db)
 ):
@@ -90,11 +92,14 @@ async def scrape_job_offers(
     
     try:
         
-        await flujo_principal(db, email, password, list_offers)
+        background_tasks.add_task(flujo_principal, db, email, password, list_offers)
+        # await flujo_principal(db, email, password, list_offers)
 
     except Exception as e:
         logger.error(f"Hubo un error en la ejecución principal: {e}")
-    return {"message": "Hello, World! Scrape job offers."}
+    return {
+        "message": "El API de scraping se está ejecutando en segundo plano. Por favor, consulte los registros para obtener más información."
+        }
 
     
 @scraping_router.get(

@@ -105,10 +105,8 @@ async def flujo_principal(db, email: str, password: str, list_offers):
     try:
         logger.info("Iniciando extracción de candidatos...")    
         
-        #doing login
         await doing_login(driver, email, password)
         
-        #validate links
         list_offers = await get_offers(driver, list_offers)
         
         wait = WebDriverWait(driver, 10)
@@ -121,5 +119,8 @@ async def flujo_principal(db, email: str, password: str, list_offers):
         logger.error(error_message)
         logger.error(f"Traceback: {traceback.format_exc()}")
     finally:
+        logger.info("No hay más candidatos para procesar.") 
         logger.info("Cerrando navegador...")
+        driver.close()
         driver.quit()
+        

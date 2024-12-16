@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
 from ....db.database import get_db
+from ....db.models.user import User
 from ....schemas.user_schema import  UserRegister
 from ....schemas.generic import GenericResponse
 from ....service.user_service import (
@@ -45,7 +46,6 @@ async def login(
     db: Session = Depends(get_db)
 )-> GenericResponse:
     user = authenticate_user(request.email, request.password, db)
-    print(user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,7 +64,6 @@ async def login(
                 "token_type": "bearer"
             }
         )
-
 
 
 @auth_router.post(
@@ -110,6 +109,36 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
             detail="Refresh token expired",
         )
 
-    # Crear un nuevo access token
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@auth_router.post(
+    "/logout",
+    operation_id="logout",
+    summary="User Logout",
+    description="Endpoint to log out a user. Sets the user's password to an empty string in the database.",
+    status_code=status.HTTP_200_OK,
+    response_description="Message indicating that the user has been logged out."
+)
+async def logout(email: str, db: Session = Depends(get_db)):
+    """
+    Endpoint to log out a user.
+    Sets the user's password to an empty string in the database.
+    """
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="User not found"
+            )
+        
+        await save_credentials(db, email, "")
+        return {"message": "User logged out successfully"}
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"An error occurred: {str(e)}"
+        )
