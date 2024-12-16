@@ -140,8 +140,8 @@ async def process_pagination(driver, wait, url):
         driver.get(url)
         logger.info(f"Página inicial: {driver.current_url}")
         
-        if driver.current_url == "https://empresa.co.computrabajo.com/Account/Used":
-            logger.info("La cuenta de usuario ha sido utilizada....")
+        if driver.current_url == "https://empresa.co.computrabajo.com/Account/Used" or driver.current_url == "https://empresa.co.computrabajo.com/Login?ReturnUrl=%2fCompany":
+            logger.info("No es posible acceder a la página...")
             return
 
         current_url = driver.current_url

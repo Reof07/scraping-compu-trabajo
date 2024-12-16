@@ -45,31 +45,16 @@ def create_candidate(db: Session, offer_id: str, candidate_data: dict):
     finally:
         db.close()
 
-# async def _save_candidates_batch(candidates_batch: list):
-#     """
-#     Guarda un lote de candidatos en la base de datos.
-    
-#     Args:
-#         db: Sesión de la base de datos.
-#         candidates_batch: Lista de candidatos a guardar.
-#     """
-#     db = SessionLocal()
-#     try:
-#         db.bulk_insert_mappings(Candidate, candidates_batch)
-#         db.commit()
-#         logger.info(f"Guardado un lote de {len(candidates_batch)} candidatos.")
-#     except exc.SQLAlchemyError as e:
-#         db.rollback()
-#         logger.error(f"Error al guardar el lote: {e}")
-#         db.close()
-
 async def _save_candidates_batch(candidates_batch: list):
     """
-    Guarda un lote de candidatos en la base de datos evitando duplicados.
-    Actualiza los registros si ya existen, o los crea si no.
+    
+    Save a batch of candidates to the database avoiding duplicates.
+    Updates existing records if they exist, or creates them if they don't.
+    
 
-    Args:
-        candidates_batch: Lista de candidatos a guardar.
+    Args: 
+        candidates_batch: List of candidate dictionaries.
+        db: Active database session.
     """
     db = SessionLocal()
     try:
@@ -111,58 +96,21 @@ async def _save_candidates_batch(candidates_batch: list):
         db.close()
 
 
-# async def save_candidate_details(driver, candidate_details, id_candidate, db: Session):
-#     """
-#     Extrae los detalles de un candidato desde un enlace y los guarda en la base de datos.
-
-#     :param driver: Instancia activa de Selenium WebDriver.
-#     :param candidate_details_link: URL con los detalles del candidato.
-#     :param id_candidate: ID del candidato para asociarlo a los detalles.
-#     :param db: Sesión activa de la base de datos.
-#     :return: Objeto de los detalles del candidato guardados en la base de datos.
-#     """
-
-#     # Crear un objeto CandidateDetails
-#     candidate_details_record = CandidateDetail(
-#         email=candidate_details.get("email"),
-#         id_number=candidate_details.get("id_number"),
-#         mobile_phone=candidate_details.get("mobile_phone"),
-#         landline_phone=candidate_details.get("landline_phone"),
-#         location=candidate_details.get("location"),
-#         marital_status=candidate_details.get("marital_status"),
-#         availability_to_travel=candidate_details.get("availability_to_travel"),
-#         availability_to_move=candidate_details.get("availability_to_move"),
-#         net_monthly_salary=candidate_details.get("net_monthly_salary"),
-#         resume=None,  # Aquí puedes agregar lógica si quieres extraer el 'resume'
-#         cv_link=candidate_details.get("cv_link"),
-#         candidate_id=id_candidate,  # Relacionar con el candidato correcto
-#         created_at=datetime.now(),
-#         updated_at=datetime.now()
-#     )
-    
-#     # Guardar el registro en la base de datos
-#     db.add(candidate_details_record)
-#     db.commit()  # Confirmar los cambios
-
-#     print(f"Detalles del candidato con ID {id_candidate} guardados exitosamente.")
-
-#     return candidate_details_record
-
-
 async def save_candidate_details_batch(candidate_details_batch: list):
     """
-    Guarda un lote de detalles de candidatos en la base de datos evitando duplicados.
-    Actualiza los registros si ya existen, o los crea si no.
-
-    :param candidate_details_batch: Lista de diccionarios con detalles de candidatos.
-    :param db: Sesión activa de la base de datos.
+    Save a batch of candidate details to the database avoiding duplicates.
+    Updates existing records if they exist, or creates them if they don't.
+    
+    Args:
+        candidate_details_batch: List of candidate details dictionaries.
+        db: Active database session.
     """
     db = SessionLocal()
     try:
         for details in candidate_details_batch:
             # Verificar si ya existe el registro
             existing_details = db.query(CandidateDetail).filter(
-                CandidateDetail.candidate_id == details['candidate_id']
+                CandidateDetail.uuid_candidate == details['uuid_candidate']
             ).first()
 
             #get uuid_candidate
@@ -201,7 +149,7 @@ async def save_candidate_details_batch(candidate_details_batch: list):
                     net_monthly_salary=details.get("net_monthly_salary"),
                     resume=None,  # Lógica para extraer el resumen, si es necesario
                     cv_link=details.get("cv_link"),
-                    uuid_candidate=details["candidate_id"],
+                    uuid_candidate=details["uuid_candidate"],
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                 )
